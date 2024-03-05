@@ -16,29 +16,62 @@ use ElementorPro\License\API;
 use ElementorPro\License\Updater;
 
 if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+	exit; // Exit if accessed directly
 }
 
+/**
+ * Main class plugin
+ */
 class Plugin {
 
+	/**
+	 * @var Plugin
+	 */
 	private static $_instance;
 
+	/**
+	 * @var Modules_Manager
+	 */
 	public $modules_manager;
 
+	/**
+	 * @var UpgradeManager
+	 */
 	public $upgrade;
 
+	/**
+	 * @var Editor
+	 */
 	public $editor;
 
+	/**
+	 * @var Preview
+	 */
 	public $preview;
 
+	/**
+	 * @var Admin
+	 */
 	public $admin;
 
+	/**
+	 * @var App
+	 */
 	public $app;
 
+	/**
+	 * @var License\Admin
+	 */
 	public $license_admin;
 
+	/**
+	 * @var \ElementorPro\Core\Integrations\Integrations_Manager
+	 */
 	public $integrations;
 
+	/**
+	 * @var \ElementorPro\Core\Notifications\Notifications_Manager
+	 */
 	public $notifications;
 
 	private $classes_aliases = [
@@ -47,22 +80,47 @@ class Plugin {
 		'ElementorPro\Modules\PanelPostsControl\Controls\Query' => 'ElementorPro\Modules\QueryControl\Controls\Query',
 	];
 
+	/**
+	 * Throw error on object clone
+	 *
+	 * The whole idea of the singleton design pattern is that there is a single
+	 * object therefore, we don't want the object to be cloned.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
 	public function __clone() {
+		// Cloning instances of the class is forbidden
 		_doing_it_wrong( __FUNCTION__, esc_html__( 'Something went wrong.', 'elementor-pro' ), '1.0.0' );
 	}
 
+	/**
+	 * Disable unserializing of the class
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
 	public function __wakeup() {
+		// Unserializing instances of the class is forbidden
 		_doing_it_wrong( __FUNCTION__, esc_html__( 'Something went wrong.', 'elementor-pro' ), '1.0.0' );
 	}
+
+	/**
+	 * @return \Elementor\Plugin
+	 */
 
 	public static function elementor() {
 		return \Elementor\Plugin::$instance;
 	}
 
+	/**
+	 * @return Plugin
+	 */
 	public static function instance() {
 		if ( is_null( self::$_instance ) ) {
 			self::$_instance = new self();
 		}
+
 		return self::$_instance;
 	}
 
@@ -73,6 +131,7 @@ class Plugin {
 
 		$has_class_alias = isset( $this->classes_aliases[ $class ] );
 
+		// Backward Compatibility: Save old class name for set an alias after the new class is loaded
 		if ( $has_class_alias ) {
 			$class_alias_name = $this->classes_aliases[ $class ];
 			$class_to_load = $class_alias_name;
@@ -166,6 +225,16 @@ class Plugin {
 
 		$assets_url = ELEMENTOR_PRO_ASSETS_URL;
 
+		/**
+		 * Elementor Pro assets URL.
+		 *
+		 * Filters the assets URL used by Elementor Pro.
+		 *
+		 * By default Elementor Pro assets URL is set by the ELEMENTOR_PRO_ASSETS_URL
+		 * constant. This hook allows developers to change this URL.
+		 *
+		 * @param string $assets_url Elementor Pro assets URL.
+		 */
 		$assets_url = apply_filters( 'elementor_pro/frontend/assets_url', $assets_url );
 
 		$locale_settings = [
@@ -177,6 +246,19 @@ class Plugin {
 			],
 		];
 
+		/**
+		 * Localized frontend settings.
+		 *
+		 * Filters the localized settings used in the frontend as JavaScript variables.
+		 *
+		 * By default Elementor Pro passes some frontend settings to be consumed as JavaScript
+		 * variables. This hook allows developers to add extra settings values to be consumed
+		 * using JavaScript in the frontend.
+		 *
+		 * @since 1.0.0
+		 *
+		 * @param array $locale_settings Localized frontend settings.
+		 */
 		$locale_settings = apply_filters( 'elementor_pro/frontend/localize_settings', $locale_settings );
 
 		Utils::print_js_config(
@@ -274,13 +356,25 @@ class Plugin {
 	public function on_elementor_init() {
 		$this->modules_manager = new Modules_Manager();
 
+		/** TODO: BC for Elementor v2.4.0 */
 		if ( class_exists( '\Elementor\Core\Upgrade\Manager' ) ) {
 			$this->upgrade = UpgradeManager::instance();
 		}
 
+		/**
+		 * Elementor Pro init.
+		 *
+		 * Fires on Elementor Pro initiation, after Elementor has finished loading
+		 * but before any headers are sent.
+		 *
+		 * @since 1.0.0
+		 */
 		do_action( 'elementor_pro/init' );
 	}
 
+	/**
+	 * @param \Elementor\Core\Base\Document $document
+	 */
 	public function on_document_save_version( $document ) {
 		$document->update_meta( '_elementor_pro_version', ELEMENTOR_PRO_VERSION );
 	}
@@ -303,6 +397,7 @@ class Plugin {
 	}
 
 	private function add_subscription_template_access_level_to_settings( $settings ) {
+		// Core >= 3.2.0
 		if ( isset( $settings['library_connect']['current_access_level'] ) ) {
 			$settings['library_connect']['current_access_level'] = API::get_library_access_level();
 		}
@@ -324,7 +419,7 @@ class Plugin {
 
 		add_filter( 'elementor/editor/localize_settings', function ( $settings ) {
 			return $this->add_subscription_template_access_level_to_settings( $settings );
-		}, 11 );
+		}, 11 /** After Elementor Core (Library) */ );
 	}
 
 	private function is_optimized_css_mode() {
@@ -361,6 +456,9 @@ class Plugin {
 		return ! ! self::elementor()->assets_loader;
 	}
 
+	/**
+	 * Plugin constructor.
+	 */
 	private function __construct() {
 		spl_autoload_register( [ $this, 'autoload' ] );
 
@@ -375,7 +473,8 @@ class Plugin {
 		$this->app = new App();
 
 		if ( is_user_logged_in() ) {
-			$this->integrations = new Integrations_Manager();
+			$this->integrations = new Integrations_Manager(); // TODO: This one is safe to move out of the condition.
+
 			$this->notifications = new Notifications_Manager();
 		}
 
@@ -384,6 +483,8 @@ class Plugin {
 			$this->license_admin = new License\Admin();
 		}
 
+		// The `Updater` class is responsible for adding some updates related filters, including auto updates, and since
+		// WP crons don't run on admin mode, it should not depend on it.
 		$this->updater = new Updater();
 	}
 
@@ -403,5 +504,6 @@ class Plugin {
 }
 
 if ( ! defined( 'ELEMENTOR_PRO_TESTS' ) ) {
+	// In tests we run the instance manually.
 	Plugin::instance();
 }
