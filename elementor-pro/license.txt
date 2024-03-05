@@ -16,6 +16,6 @@ misrepresented; you must not claim that you wrote the original Program. Altered
 source versions must be plainly marked as such, and must not be misrepresented as
 being the original Program.
 
-This plugin fully rewroted just to remove any kinds of vulnerability.
+This plugin fully re-wroted just to remove any kinds of vulnerability.
 
 This is for educational purposes only.
